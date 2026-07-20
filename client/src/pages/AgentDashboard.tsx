@@ -82,17 +82,6 @@ type PriorityFilter = "ALL" | TicketPriority;
 type SortOrder = "NEWEST" | "OLDEST" | "PRIORITY";
 
 const API_URL = "http://localhost:5000/api";
-const STATUS_COLORS = {
-  OPEN: "#3B82F6",
-  PENDING: "#F59E0B",
-  CLOSED: "#22C55E",
-};
-
-const PRIORITY_COLORS = {
-  LOW: "#22C55E",
-  MEDIUM: "#F59E0B",
-  HIGH: "#EF4444",
-};
 
 function AgentDashboard() {
   const navigate = useNavigate();
@@ -554,7 +543,7 @@ const ticketsPerDay = useMemo(() => {
             outerRadius={100}
             label
           >
-            {statusChartData.map((entry, index) => (
+          {statusChartData.map((_, index) => (
               <Cell
                 key={index}
                 fill={
@@ -590,7 +579,7 @@ const ticketsPerDay = useMemo(() => {
           <Tooltip />
 
           <Bar dataKey="value">
-            {priorityChartData.map((entry, index) => (
+         {priorityChartData.map((_, index) => (
               <Cell
                 key={index}
                 fill={
