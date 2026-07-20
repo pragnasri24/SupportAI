@@ -73,7 +73,7 @@ type StoredUser = {
   role: string;
 };
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://supportai-3v3x.onrender.com/api";
 
 function TicketDetails() {
   const { ticketId } = useParams<{ ticketId: string }>();

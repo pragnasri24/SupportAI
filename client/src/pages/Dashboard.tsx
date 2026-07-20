@@ -41,7 +41,7 @@ type StatusFilter = "ALL" | TicketStatus;
 type PriorityFilter = "ALL" | TicketPriority;
 type SortOption = "NEWEST" | "OLDEST" | "PRIORITY_HIGH" | "PRIORITY_LOW";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://supportai-3v3x.onrender.com/api";
 
 const priorityRank: Record<TicketPriority, number> = {
   LOW: 1,

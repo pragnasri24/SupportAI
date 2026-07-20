@@ -10,7 +10,7 @@ function Home() {
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/health");
+        const response = await fetch("https://supportai-3v3x.onrender.com/api/health");
         const data = await response.json();
 
         if (!response.ok) {

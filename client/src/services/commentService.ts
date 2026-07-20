@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/api/comments";
+const API_URL = "https://supportai-3v3x.onrender.com/api/comments";
 
 export async function getComments(ticketId: string) {
   const response = await fetch(`${API_URL}/ticket/${ticketId}`);

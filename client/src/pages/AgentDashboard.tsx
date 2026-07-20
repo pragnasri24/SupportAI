@@ -81,7 +81,7 @@ type StatusFilter = "ALL" | TicketStatus;
 type PriorityFilter = "ALL" | TicketPriority;
 type SortOrder = "NEWEST" | "OLDEST" | "PRIORITY";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://supportai-3v3x.onrender.com/api";
 
 function AgentDashboard() {
   const navigate = useNavigate();
