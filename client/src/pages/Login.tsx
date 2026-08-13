@@ -1,11 +1,5 @@
-import {
-  useState,
-} from "react";
-
-import type {
-  FormEvent,
-} from "react";
-
+import { useState } from "react";
+import type { FormEvent } from "react";
 import {
   Link,
   useNavigate,
@@ -14,7 +8,6 @@ import {
 type LoginResponse = {
   success: boolean;
   message: string;
-
   token?: string;
 
   user?: {
@@ -26,121 +19,102 @@ type LoginResponse = {
 };
 
 const API_URL =
+  import.meta.env.VITE_API_URL ||
   "http://localhost:5000/api";
 
 function Login() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const [
-    email,
-    setEmail,
-  ] = useState("");
+  const [email, setEmail] =
+    useState("");
 
-  const [
-    password,
-    setPassword,
-  ] = useState("");
+  const [password, setPassword] =
+    useState("");
 
-  const [
-    message,
-    setMessage,
-  ] = useState("");
+  const [message, setMessage] =
+    useState("");
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(false);
+  const [isLoading, setIsLoading] =
+    useState(false);
 
-  const handleSubmit =
-    async (
-      event: FormEvent<HTMLFormElement>
-    ) => {
-      event.preventDefault();
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
-      setMessage("");
-      setIsLoading(true);
+    setMessage("");
+    setIsLoading(true);
 
-      try {
-        const response =
-          await fetch(
-            `${API_URL}/auth/login`,
-            {
-              method:
-                "POST",
+    try {
+      const response = await fetch(
+        `${API_URL}/auth/login`,
+        {
+          method: "POST",
 
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-              body:
-                JSON.stringify(
-                  {
-                    email:
-                      email.trim(),
-                    password,
-                  }
-                ),
-            }
-          );
-
-        const data =
-          (await response.json()) as LoginResponse;
-
-        if (
-          !response.ok ||
-          !data.success ||
-          !data.token ||
-          !data.user
-        ) {
-          setMessage(
-            data.message ||
-              "Login failed"
-          );
-
-          return;
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
         }
+      );
 
-        localStorage.setItem(
-          "supportai_token",
-          data.token
-        );
+      const data =
+        (await response.json()) as LoginResponse;
 
-        localStorage.setItem(
-          "supportai_user",
-          JSON.stringify(
-            data.user
-          )
-        );
-
-        if (
-          data.user.role ===
-            "AGENT" ||
-          data.user.role ===
-            "ADMIN"
-        ) {
-          navigate(
-            "/agent-dashboard"
-          );
-        } else {
-          navigate(
-            "/dashboard"
-          );
-        }
-      } catch (error) {
-        console.error(
-          "Login request failed:",
-          error
-        );
-
+      if (
+        !response.ok ||
+        !data.success ||
+        !data.token ||
+        !data.user
+      ) {
         setMessage(
-          "Could not connect to the server"
+          data.message ||
+            "Login failed"
         );
-      } finally {
-        setIsLoading(false);
+
+        return;
       }
-    };
+
+      localStorage.setItem(
+        "supportai_token",
+        data.token
+      );
+
+      localStorage.setItem(
+        "supportai_user",
+        JSON.stringify(
+          data.user
+        )
+      );
+
+      if (
+        data.user.role === "AGENT" ||
+        data.user.role === "ADMIN"
+      ) {
+        navigate(
+          "/agent-dashboard"
+        );
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error(
+        "Login request failed:",
+        error
+      );
+
+      setMessage(
+        "Could not connect to the server"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="auth-page">
@@ -150,22 +124,17 @@ function Login() {
             SupportAI
           </p>
 
-          <h1>
-            Welcome back
-          </h1>
+          <h1>Welcome back</h1>
 
           <p>
-            Sign in to manage
-            your support
-            tickets.
+            Sign in to manage your
+            support tickets.
           </p>
         </div>
 
         <form
           className="auth-form"
-          onSubmit={
-            handleSubmit
-          }
+          onSubmit={handleSubmit}
         >
           <label htmlFor="email">
             Email address
@@ -176,12 +145,9 @@ function Login() {
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(
-              event
-            ) =>
+            onChange={(event) =>
               setEmail(
-                event.target
-                  .value
+                event.target.value
               )
             }
             autoComplete="email"
@@ -197,12 +163,9 @@ function Login() {
             type="password"
             placeholder="Enter your password"
             value={password}
-            onChange={(
-              event
-            ) =>
+            onChange={(event) =>
               setPassword(
-                event.target
-                  .value
+                event.target.value
               )
             }
             autoComplete="current-password"
@@ -217,9 +180,7 @@ function Login() {
 
           <button
             type="submit"
-            disabled={
-              isLoading
-            }
+            disabled={isLoading}
           >
             {isLoading
               ? "Signing in..."
@@ -230,7 +191,6 @@ function Login() {
         <p className="auth-footer">
           Don&apos;t have an
           account?{" "}
-
           <Link to="/register">
             Create one
           </Link>

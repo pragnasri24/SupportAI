@@ -1,11 +1,5 @@
-import {
-  useState,
-} from "react";
-
-import type {
-  FormEvent,
-} from "react";
-
+import { useState } from "react";
+import type { FormEvent } from "react";
 import {
   Link,
   useNavigate,
@@ -24,103 +18,83 @@ type RegisterResponse = {
 };
 
 const API_URL =
+  import.meta.env.VITE_API_URL ||
   "http://localhost:5000/api";
 
 function Register() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const [
-    name,
-    setName,
-  ] = useState("");
+  const [name, setName] =
+    useState("");
 
-  const [
-    email,
-    setEmail,
-  ] = useState("");
+  const [email, setEmail] =
+    useState("");
 
-  const [
-    password,
-    setPassword,
-  ] = useState("");
+  const [password, setPassword] =
+    useState("");
 
-  const [
-    message,
-    setMessage,
-  ] = useState("");
+  const [message, setMessage] =
+    useState("");
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(false);
+  const [isLoading, setIsLoading] =
+    useState(false);
 
-  const handleSubmit =
-    async (
-      event: FormEvent<HTMLFormElement>
-    ) => {
-      event.preventDefault();
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
-      setMessage("");
-      setIsLoading(true);
+    setMessage("");
+    setIsLoading(true);
 
-      try {
-        const response =
-          await fetch(
-            `${API_URL}/auth/register`,
-            {
-              method:
-                "POST",
+    try {
+      const response = await fetch(
+        `${API_URL}/auth/register`,
+        {
+          method: "POST",
 
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-              body:
-                JSON.stringify(
-                  {
-                    name:
-                      name.trim(),
-                    email:
-                      email.trim(),
-                    password,
-                  }
-                ),
-            }
-          );
-
-        const data =
-          (await response.json()) as RegisterResponse;
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          setMessage(
-            data.message ||
-              "Registration failed"
-          );
-
-          return;
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim(),
+            password,
+          }),
         }
+      );
 
-        navigate(
-          "/login"
-        );
-      } catch (error) {
-        console.error(
-          "Registration request failed:",
-          error
-        );
+      const data =
+        (await response.json()) as RegisterResponse;
 
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         setMessage(
-          "Could not connect to the server"
+          data.message ||
+            "Registration failed"
         );
-      } finally {
-        setIsLoading(false);
+
+        return;
       }
-    };
+
+      navigate("/login");
+    } catch (error) {
+      console.error(
+        "Registration request failed:",
+        error
+      );
+
+      setMessage(
+        "Could not connect to the server"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="auth-page">
@@ -143,9 +117,7 @@ function Register() {
 
         <form
           className="auth-form"
-          onSubmit={
-            handleSubmit
-          }
+          onSubmit={handleSubmit}
         >
           <label htmlFor="name">
             Full name
@@ -156,12 +128,9 @@ function Register() {
             type="text"
             placeholder="Enter your full name"
             value={name}
-            onChange={(
-              event
-            ) =>
+            onChange={(event) =>
               setName(
-                event.target
-                  .value
+                event.target.value
               )
             }
             autoComplete="name"
@@ -177,12 +146,9 @@ function Register() {
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(
-              event
-            ) =>
+            onChange={(event) =>
               setEmail(
-                event.target
-                  .value
+                event.target.value
               )
             }
             autoComplete="email"
@@ -198,12 +164,9 @@ function Register() {
             type="password"
             placeholder="Minimum 8 characters"
             value={password}
-            onChange={(
-              event
-            ) =>
+            onChange={(event) =>
               setPassword(
-                event.target
-                  .value
+                event.target.value
               )
             }
             autoComplete="new-password"
@@ -219,9 +182,7 @@ function Register() {
 
           <button
             type="submit"
-            disabled={
-              isLoading
-            }
+            disabled={isLoading}
           >
             {isLoading
               ? "Creating account..."
@@ -232,7 +193,6 @@ function Register() {
         <p className="auth-footer">
           Already have an
           account?{" "}
-
           <Link to="/login">
             Sign in
           </Link>

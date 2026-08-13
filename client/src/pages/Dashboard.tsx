@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import type {
+  FormEvent,
+} from "react";
+
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
 import "../styles/dashboard.css";
 
@@ -11,8 +22,15 @@ type User = {
   role: string;
 };
 
-type TicketStatus = "OPEN" | "PENDING" | "CLOSED";
-type TicketPriority = "LOW" | "MEDIUM" | "HIGH";
+type TicketStatus =
+  | "OPEN"
+  | "PENDING"
+  | "CLOSED";
+
+type TicketPriority =
+  | "LOW"
+  | "MEDIUM"
+  | "HIGH";
 
 type Ticket = {
   id: string;
@@ -37,8 +55,13 @@ type CreateTicketResponse = {
   ticket?: Ticket;
 };
 
-type StatusFilter = "ALL" | TicketStatus;
-type PriorityFilter = "ALL" | TicketPriority;
+type StatusFilter =
+  | "ALL"
+  | TicketStatus;
+
+type PriorityFilter =
+  | "ALL"
+  | TicketPriority;
 
 type SortOption =
   | "NEWEST"
@@ -46,83 +69,112 @@ type SortOption =
   | "PRIORITY_HIGH"
   | "PRIORITY_LOW";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000/api";
 
-const priorityRank: Record<TicketPriority, number> = {
+const priorityRank: Record<
+  TicketPriority,
+  number
+> = {
   LOW: 1,
   MEDIUM: 2,
   HIGH: 3,
 };
 
 function Dashboard() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [user, setUser] = useState<User | null>(null);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [user, setUser] =
+    useState<User | null>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [tickets, setTickets] =
+    useState<Ticket[]>([]);
 
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [loading, setLoading] =
+    useState(true);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] =
+  const [creating, setCreating] =
+    useState(false);
+
+  const [
+    showCreateForm,
+    setShowCreateForm,
+  ] = useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState("");
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] =
     useState<StatusFilter>("ALL");
-  const [priorityFilter, setPriorityFilter] =
+
+  const [
+    priorityFilter,
+    setPriorityFilter,
+  ] =
     useState<PriorityFilter>("ALL");
-  const [sortOption, setSortOption] =
+
+  const [
+    sortOption,
+    setSortOption,
+  ] =
     useState<SortOption>("NEWEST");
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] =
+    useState("");
+
+  const [
+    description,
+    setDescription,
+  ] = useState("");
+
   const [priority, setPriority] =
-    useState<TicketPriority>("MEDIUM");
+    useState<TicketPriority>(
+      "MEDIUM"
+    );
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("supportai_user");
-
-    if (!storedUser) {
-      localStorage.removeItem("supportai_token");
-      navigate("/login", { replace: true });
-      return;
-    }
-
-    try {
-      const parsedUser = JSON.parse(storedUser) as User;
-
-      if (!parsedUser.id) {
-        throw new Error("Invalid user information.");
-      }
-
-      setUser(parsedUser);
-      void fetchTickets(parsedUser.id);
-    } catch {
-      localStorage.removeItem("supportai_token");
-      localStorage.removeItem("supportai_user");
-      navigate("/login", { replace: true });
-    }
-  }, [navigate]);
-
-  const fetchTickets = async (userId: string) => {
+  const fetchTickets = async (
+    userId: string
+  ) => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/tickets/user/${userId}`
-      );
+      const response =
+        await fetch(
+          `${API_URL}/tickets/user/${userId}`
+        );
 
-      const data = (await response.json()) as TicketsResponse;
+      const data =
+        (await response.json()) as TicketsResponse;
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
-          data.message || "Unable to load tickets."
+          data.message ||
+            "Unable to load tickets."
         );
       }
 
-      setTickets(data.tickets ?? []);
+      setTickets(
+        data.tickets ?? []
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -134,193 +186,324 @@ function Dashboard() {
     }
   };
 
-  const statistics = useMemo(() => {
-    return {
-      total: tickets.length,
-
-      open: tickets.filter(
-        (ticket) => ticket.status === "OPEN"
-      ).length,
-
-      pending: tickets.filter(
-        (ticket) => ticket.status === "PENDING"
-      ).length,
-
-      closed: tickets.filter(
-        (ticket) => ticket.status === "CLOSED"
-      ).length,
-    };
-  }, [tickets]);
-
-  const filteredTickets = useMemo(() => {
-    const normalizedSearch =
-      searchQuery.trim().toLowerCase();
-
-    const result = tickets.filter((ticket) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        ticket.title
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        ticket.description
-          .toLowerCase()
-          .includes(normalizedSearch);
-
-      const matchesStatus =
-        statusFilter === "ALL" ||
-        ticket.status === statusFilter;
-
-      const matchesPriority =
-        priorityFilter === "ALL" ||
-        ticket.priority === priorityFilter;
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesPriority
+  useEffect(() => {
+    const storedUser =
+      localStorage.getItem(
+        "supportai_user"
       );
-    });
 
-    return [...result].sort(
-      (firstTicket, secondTicket) => {
-        switch (sortOption) {
-          case "OLDEST":
-            return (
-              new Date(
-                firstTicket.createdAt
-              ).getTime() -
-              new Date(
-                secondTicket.createdAt
-              ).getTime()
-            );
+    if (!storedUser) {
+      localStorage.removeItem(
+        "supportai_token"
+      );
 
-          case "PRIORITY_HIGH":
-            return (
-              priorityRank[secondTicket.priority] -
-              priorityRank[firstTicket.priority]
-            );
-
-          case "PRIORITY_LOW":
-            return (
-              priorityRank[firstTicket.priority] -
-              priorityRank[secondTicket.priority]
-            );
-
-          case "NEWEST":
-          default:
-            return (
-              new Date(
-                secondTicket.createdAt
-              ).getTime() -
-              new Date(
-                firstTicket.createdAt
-              ).getTime()
-            );
+      navigate(
+        "/login",
+        {
+          replace: true,
         }
-      }
-    );
-  }, [
-    tickets,
-    searchQuery,
-    statusFilter,
-    priorityFilter,
-    sortOption,
-  ]);
+      );
 
-  const resetTicketForm = () => {
-    setTitle("");
-    setDescription("");
-    setPriority("MEDIUM");
-  };
-
-  const handleCreateTicket = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    if (!user) {
-      setError("User information is unavailable.");
       return;
     }
 
     try {
-      setCreating(true);
-      setError("");
-      setSuccessMessage("");
+      const parsedUser =
+        JSON.parse(
+          storedUser
+        ) as User;
 
-      const response = await fetch(
-        `${API_URL}/tickets`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: title.trim(),
-            description: description.trim(),
-            priority,
-            userId: user.id,
-          }),
-        }
-      );
-
-      const data =
-        (await response.json()) as CreateTicketResponse;
-
-      if (
-        !response.ok ||
-        !data.success ||
-        !data.ticket
-      ) {
+      if (!parsedUser.id) {
         throw new Error(
-          data.message ||
-            "Unable to create the ticket."
+          "Invalid user information."
         );
       }
 
-      setTickets((currentTickets) => [
-        data.ticket as Ticket,
-        ...currentTickets,
-      ]);
+      setUser(parsedUser);
 
-      resetTicketForm();
-      setShowCreateForm(false);
-      setSuccessMessage(
-        "Ticket created successfully."
+      void fetchTickets(
+        parsedUser.id
       );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to create the ticket."
+    } catch {
+      localStorage.removeItem(
+        "supportai_token"
       );
-    } finally {
-      setCreating(false);
+
+      localStorage.removeItem(
+        "supportai_user"
+      );
+
+      navigate(
+        "/login",
+        {
+          replace: true,
+        }
+      );
     }
-  };
+  }, [navigate]);
+
+  const statistics =
+    useMemo(() => {
+      return {
+        total: tickets.length,
+
+        open: tickets.filter(
+          (ticket) =>
+            ticket.status ===
+            "OPEN"
+        ).length,
+
+        pending: tickets.filter(
+          (ticket) =>
+            ticket.status ===
+            "PENDING"
+        ).length,
+
+        closed: tickets.filter(
+          (ticket) =>
+            ticket.status ===
+            "CLOSED"
+        ).length,
+      };
+    }, [tickets]);
+
+  const filteredTickets =
+    useMemo(() => {
+      const normalizedSearch =
+        searchQuery
+          .trim()
+          .toLowerCase();
+
+      const result =
+        tickets.filter(
+          (ticket) => {
+            const matchesSearch =
+              !normalizedSearch ||
+              ticket.title
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                ) ||
+              ticket.description
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                );
+
+            const matchesStatus =
+              statusFilter ===
+                "ALL" ||
+              ticket.status ===
+                statusFilter;
+
+            const matchesPriority =
+              priorityFilter ===
+                "ALL" ||
+              ticket.priority ===
+                priorityFilter;
+
+            return (
+              matchesSearch &&
+              matchesStatus &&
+              matchesPriority
+            );
+          }
+        );
+
+      return [...result].sort(
+        (
+          firstTicket,
+          secondTicket
+        ) => {
+          switch (
+            sortOption
+          ) {
+            case "OLDEST":
+              return (
+                new Date(
+                  firstTicket.createdAt
+                ).getTime() -
+                new Date(
+                  secondTicket.createdAt
+                ).getTime()
+              );
+
+            case "PRIORITY_HIGH":
+              return (
+                priorityRank[
+                  secondTicket
+                    .priority
+                ] -
+                priorityRank[
+                  firstTicket
+                    .priority
+                ]
+              );
+
+            case "PRIORITY_LOW":
+              return (
+                priorityRank[
+                  firstTicket
+                    .priority
+                ] -
+                priorityRank[
+                  secondTicket
+                    .priority
+                ]
+              );
+
+            case "NEWEST":
+            default:
+              return (
+                new Date(
+                  secondTicket.createdAt
+                ).getTime() -
+                new Date(
+                  firstTicket.createdAt
+                ).getTime()
+              );
+          }
+        }
+      );
+    }, [
+      tickets,
+      searchQuery,
+      statusFilter,
+      priorityFilter,
+      sortOption,
+    ]);
+
+  const resetTicketForm =
+    () => {
+      setTitle("");
+      setDescription("");
+      setPriority("MEDIUM");
+    };
+
+  const handleCreateTicket =
+    async (
+      event: FormEvent<HTMLFormElement>
+    ) => {
+      event.preventDefault();
+
+      if (!user) {
+        setError(
+          "User information is unavailable."
+        );
+
+        return;
+      }
+
+      try {
+        setCreating(true);
+        setError("");
+        setSuccessMessage("");
+
+        const response =
+          await fetch(
+            `${API_URL}/tickets`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  {
+                    title:
+                      title.trim(),
+
+                    description:
+                      description.trim(),
+
+                    priority,
+
+                    userId:
+                      user.id,
+                  }
+                ),
+            }
+          );
+
+        const data =
+          (await response.json()) as CreateTicketResponse;
+
+        if (
+          !response.ok ||
+          !data.success ||
+          !data.ticket
+        ) {
+          throw new Error(
+            data.message ||
+              "Unable to create the ticket."
+          );
+        }
+
+        setTickets(
+          (
+            currentTickets
+          ) => [
+            data.ticket as Ticket,
+            ...currentTickets,
+          ]
+        );
+
+        resetTicketForm();
+
+        setShowCreateForm(
+          false
+        );
+
+        setSuccessMessage(
+          "Ticket created successfully."
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to create the ticket."
+        );
+      } finally {
+        setCreating(false);
+      }
+    };
 
   const handleLogout = () => {
-    localStorage.removeItem("supportai_token");
-    localStorage.removeItem("supportai_user");
+    localStorage.removeItem(
+      "supportai_token"
+    );
 
-    navigate("/login", {
-      replace: true,
-    });
+    localStorage.removeItem(
+      "supportai_user"
+    );
+
+    navigate(
+      "/login",
+      {
+        replace: true,
+      }
+    );
 
     window.location.reload();
   };
 
-  const openCreateForm = () => {
-    setShowCreateForm(true);
-    setError("");
-    setSuccessMessage("");
-  };
+  const openCreateForm =
+    () => {
+      setShowCreateForm(true);
+      setError("");
+      setSuccessMessage("");
+    };
 
-  const closeCreateForm = () => {
-    setShowCreateForm(false);
-    resetTicketForm();
-    setError("");
-  };
+  const closeCreateForm =
+    () => {
+      setShowCreateForm(false);
+      resetTicketForm();
+      setError("");
+    };
 
   return (
     <main className="dashboard-page">
@@ -336,7 +519,8 @@ function Dashboard() {
               {user?.name
                 ? `, ${user.name}`
                 : ""}
-              . Manage and track your support
+              . Manage and track
+              your support
               requests.
             </p>
           </div>
@@ -345,7 +529,9 @@ function Dashboard() {
             <button
               className="dashboard-create-button"
               type="button"
-              onClick={openCreateForm}
+              onClick={
+                openCreateForm
+              }
             >
               + Create Ticket
             </button>
@@ -353,7 +539,9 @@ function Dashboard() {
             <button
               className="dashboard-logout-button"
               type="button"
-              onClick={handleLogout}
+              onClick={
+                handleLogout
+              }
             >
               Logout
             </button>
@@ -363,12 +551,16 @@ function Dashboard() {
         {user && (
           <section className="dashboard-user-card">
             <p>
-              <strong>Email:</strong>{" "}
+              <strong>
+                Email:
+              </strong>{" "}
               {user.email}
             </p>
 
             <p>
-              <strong>Role:</strong>{" "}
+              <strong>
+                Role:
+              </strong>{" "}
               {user.role}
             </p>
           </section>
@@ -426,8 +618,12 @@ function Dashboard() {
             </h2>
 
             <p className="dashboard-result-count">
-              Showing {filteredTickets.length} of{" "}
-              {tickets.length} tickets
+              Showing{" "}
+              {
+                filteredTickets.length
+              }{" "}
+              of {tickets.length}{" "}
+              tickets
             </p>
           </div>
 
@@ -441,10 +637,15 @@ function Dashboard() {
                 className="dashboard-search-input"
                 type="search"
                 placeholder="Search by title or description..."
-                value={searchQuery}
-                onChange={(event) =>
+                value={
+                  searchQuery
+                }
+                onChange={(
+                  event
+                ) =>
                   setSearchQuery(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
               />
@@ -453,8 +654,12 @@ function Dashboard() {
             <select
               className="dashboard-filter-select"
               aria-label="Filter by status"
-              value={statusFilter}
-              onChange={(event) =>
+              value={
+                statusFilter
+              }
+              onChange={(
+                event
+              ) =>
                 setStatusFilter(
                   event.target
                     .value as StatusFilter
@@ -481,8 +686,12 @@ function Dashboard() {
             <select
               className="dashboard-filter-select"
               aria-label="Filter by priority"
-              value={priorityFilter}
-              onChange={(event) =>
+              value={
+                priorityFilter
+              }
+              onChange={(
+                event
+              ) =>
                 setPriorityFilter(
                   event.target
                     .value as PriorityFilter
@@ -510,7 +719,9 @@ function Dashboard() {
               className="dashboard-filter-select"
               aria-label="Sort tickets"
               value={sortOption}
-              onChange={(event) =>
+              onChange={(
+                event
+              ) =>
                 setSortOption(
                   event.target
                     .value as SortOption
@@ -526,11 +737,13 @@ function Dashboard() {
               </option>
 
               <option value="PRIORITY_HIGH">
-                Priority: high to low
+                Priority: high
+                to low
               </option>
 
               <option value="PRIORITY_LOW">
-                Priority: low to high
+                Priority: low
+                to high
               </option>
             </select>
           </div>
@@ -538,9 +751,14 @@ function Dashboard() {
           {showCreateForm && (
             <form
               className="dashboard-ticket-form"
-              onSubmit={handleCreateTicket}
+              onSubmit={
+                handleCreateTicket
+              }
             >
-              <h3>Create a New Ticket</h3>
+              <h3>
+                Create a New
+                Ticket
+              </h3>
 
               <div className="dashboard-form-group">
                 <label htmlFor="ticket-title">
@@ -552,8 +770,13 @@ function Dashboard() {
                   type="text"
                   placeholder="Example: Unable to reset password"
                   value={title}
-                  onChange={(event) =>
-                    setTitle(event.target.value)
+                  onChange={(
+                    event
+                  ) =>
+                    setTitle(
+                      event.target
+                        .value
+                    )
                   }
                   required
                 />
@@ -567,10 +790,15 @@ function Dashboard() {
                 <textarea
                   id="ticket-description"
                   placeholder="Describe the problem in detail..."
-                  value={description}
-                  onChange={(event) =>
+                  value={
+                    description
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setDescription(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -584,8 +812,12 @@ function Dashboard() {
 
                 <select
                   id="ticket-priority"
-                  value={priority}
-                  onChange={(event) =>
+                  value={
+                    priority
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setPriority(
                       event.target
                         .value as TicketPriority
@@ -610,7 +842,9 @@ function Dashboard() {
                 <button
                   className="dashboard-form-cancel"
                   type="button"
-                  onClick={closeCreateForm}
+                  onClick={
+                    closeCreateForm
+                  }
                 >
                   Cancel
                 </button>
@@ -646,22 +880,30 @@ function Dashboard() {
 
           {loading && (
             <div className="dashboard-loading">
-              <p>Loading tickets...</p>
+              <p>
+                Loading
+                tickets...
+              </p>
             </div>
           )}
 
           {!loading &&
             !error &&
-            filteredTickets.length === 0 && (
+            filteredTickets.length ===
+              0 && (
               <div className="dashboard-empty-state">
                 <div className="dashboard-empty-icon">
                   📭
                 </div>
 
-                <h3>No tickets found</h3>
+                <h3>
+                  No tickets
+                  found
+                </h3>
 
                 <p>
-                  {tickets.length === 0
+                  {tickets.length ===
+                  0
                     ? "Create your first support ticket."
                     : "Try changing your search or filters."}
                 </p>
@@ -669,38 +911,49 @@ function Dashboard() {
             )}
 
           {!loading &&
-            filteredTickets.length > 0 && (
+            filteredTickets.length >
+              0 && (
               <div className="dashboard-ticket-list">
                 {filteredTickets.map(
                   (ticket) => (
                     <Link
                       className="dashboard-ticket-link"
-                      key={ticket.id}
+                      key={
+                        ticket.id
+                      }
                       to={`/tickets/${ticket.id}`}
                     >
                       <article className="dashboard-ticket-card">
                         <div className="dashboard-ticket-top">
                           <h3 className="dashboard-ticket-title">
-                            {ticket.title}
+                            {
+                              ticket.title
+                            }
                           </h3>
 
                           <div className="dashboard-ticket-badges">
                             <span
                               className={`dashboard-status-badge dashboard-status-${ticket.status.toLowerCase()}`}
                             >
-                              {ticket.status}
+                              {
+                                ticket.status
+                              }
                             </span>
 
                             <span
                               className={`dashboard-priority-badge dashboard-priority-${ticket.priority.toLowerCase()}`}
                             >
-                              {ticket.priority}
+                              {
+                                ticket.priority
+                              }
                             </span>
                           </div>
                         </div>
 
                         <p className="dashboard-ticket-description">
-                          {ticket.description}
+                          {
+                            ticket.description
+                          }
                         </p>
 
                         <div className="dashboard-ticket-footer">
@@ -711,15 +964,19 @@ function Dashboard() {
                             ).toLocaleDateString(
                               undefined,
                               {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
+                                year:
+                                  "numeric",
+                                month:
+                                  "short",
+                                day:
+                                  "numeric",
                               }
                             )}
                           </span>
 
                           <span className="dashboard-view-link">
-                            View details →
+                            View details
+                            →
                           </span>
                         </div>
                       </article>
