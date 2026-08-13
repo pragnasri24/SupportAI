@@ -1,11 +1,22 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  useState,
+} from "react";
+
+import type {
+  FormEvent,
+} from "react";
+
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
 type LoginResponse = {
   success: boolean;
   message: string;
+
   token?: string;
+
   user?: {
     id: string;
     name: string;
@@ -14,92 +25,215 @@ type LoginResponse = {
   };
 };
 
+const API_URL =
+  "http://localhost:5000/api";
+
 function Login() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [
+    email,
+    setEmail,
+  ] = useState("");
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const [
+    password,
+    setPassword,
+  ] = useState("");
 
-    setMessage("");
-    setIsLoading(true);
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
-    try {
-      const response = await fetch("https://supportai-3v3x.onrender.com/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(false);
 
-      const data: LoginResponse = await response.json();
+  const handleSubmit =
+    async (
+      event: FormEvent<HTMLFormElement>
+    ) => {
+      event.preventDefault();
 
-      if (!response.ok || !data.success || !data.token || !data.user) {
-        setMessage(data.message || "Login failed");
-        return;
+      setMessage("");
+      setIsLoading(true);
+
+      try {
+        const response =
+          await fetch(
+            `${API_URL}/auth/login`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  {
+                    email:
+                      email.trim(),
+                    password,
+                  }
+                ),
+            }
+          );
+
+        const data =
+          (await response.json()) as LoginResponse;
+
+        if (
+          !response.ok ||
+          !data.success ||
+          !data.token ||
+          !data.user
+        ) {
+          setMessage(
+            data.message ||
+              "Login failed"
+          );
+
+          return;
+        }
+
+        localStorage.setItem(
+          "supportai_token",
+          data.token
+        );
+
+        localStorage.setItem(
+          "supportai_user",
+          JSON.stringify(
+            data.user
+          )
+        );
+
+        if (
+          data.user.role ===
+            "AGENT" ||
+          data.user.role ===
+            "ADMIN"
+        ) {
+          navigate(
+            "/agent-dashboard"
+          );
+        } else {
+          navigate(
+            "/dashboard"
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Login request failed:",
+          error
+        );
+
+        setMessage(
+          "Could not connect to the server"
+        );
+      } finally {
+        setIsLoading(false);
       }
-
-      localStorage.setItem("supportai_token", data.token);
-      localStorage.setItem("supportai_user", JSON.stringify(data.user));
-
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Login request failed:", error);
-      setMessage("Could not connect to the server");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
   return (
     <main className="auth-page">
       <section className="auth-card">
         <div className="auth-header">
-          <p className="auth-badge">SupportAI</p>
-          <h1>Welcome back</h1>
-          <p>Sign in to manage your support tickets.</p>
+          <p className="auth-badge">
+            SupportAI
+          </p>
+
+          <h1>
+            Welcome back
+          </h1>
+
+          <p>
+            Sign in to manage
+            your support
+            tickets.
+          </p>
         </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label htmlFor="email">Email address</label>
+        <form
+          className="auth-form"
+          onSubmit={
+            handleSubmit
+          }
+        >
+          <label htmlFor="email">
+            Email address
+          </label>
 
           <input
             id="email"
             type="email"
-            placeholder="harshith@example.com"
+            placeholder="you@example.com"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(
+              event
+            ) =>
+              setEmail(
+                event.target
+                  .value
+              )
+            }
+            autoComplete="email"
             required
           />
 
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">
+            Password
+          </label>
 
           <input
             id="password"
             type="password"
             placeholder="Enter your password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(
+              event
+            ) =>
+              setPassword(
+                event.target
+                  .value
+              )
+            }
+            autoComplete="current-password"
             required
           />
 
-          {message && <p className="auth-message">{message}</p>}
+          {message && (
+            <p className="auth-message">
+              {message}
+            </p>
+          )}
 
-          <button type="submit" disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign in"}
+          <button
+            type="submit"
+            disabled={
+              isLoading
+            }
+          >
+            {isLoading
+              ? "Signing in..."
+              : "Sign in"}
           </button>
         </form>
 
         <p className="auth-footer">
-          Don&apos;t have an account? <Link to="/register">Create one</Link>
+          Don&apos;t have an
+          account?{" "}
+
+          <Link to="/register">
+            Create one
+          </Link>
         </p>
       </section>
     </main>

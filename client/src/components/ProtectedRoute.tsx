@@ -1,7 +1,15 @@
-import type { ReactElement } from "react";
-import { Navigate } from "react-router-dom";
+import type {
+  ReactElement,
+} from "react";
 
-type UserRole = "CUSTOMER" | "AGENT" | "ADMIN";
+import {
+  Navigate,
+} from "react-router-dom";
+
+type UserRole =
+  | "CUSTOMER"
+  | "AGENT"
+  | "ADMIN";
 
 type StoredUser = {
   id: string;
@@ -19,34 +27,78 @@ function ProtectedRoute({
   children,
   allowedRoles,
 }: ProtectedRouteProps) {
-  const token = localStorage.getItem("supportai_token");
-  const storedUser = localStorage.getItem("supportai_user");
+  const token =
+    localStorage.getItem(
+      "supportai_token"
+    );
 
-  if (!token || !storedUser) {
-    return <Navigate to="/login" replace />;
+  const storedUser =
+    localStorage.getItem(
+      "supportai_user"
+    );
+
+  if (
+    !token ||
+    !storedUser
+  ) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   let user: StoredUser;
 
   try {
-    user = JSON.parse(storedUser) as StoredUser;
+    user =
+      JSON.parse(
+        storedUser
+      ) as StoredUser;
   } catch {
-    localStorage.removeItem("supportai_token");
-    localStorage.removeItem("supportai_user");
+    localStorage.removeItem(
+      "supportai_token"
+    );
 
-    return <Navigate to="/login" replace />;
+    localStorage.removeItem(
+      "supportai_user"
+    );
+
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
-  if (!user.id || !user.email || !user.role) {
-    localStorage.removeItem("supportai_token");
-    localStorage.removeItem("supportai_user");
+  if (
+    !user.id ||
+    !user.email ||
+    !user.role
+  ) {
+    localStorage.removeItem(
+      "supportai_token"
+    );
 
-    return <Navigate to="/login" replace />;
+    localStorage.removeItem(
+      "supportai_user"
+    );
+
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   if (
     allowedRoles &&
-    !allowedRoles.includes(user.role)
+    !allowedRoles.includes(
+      user.role
+    )
   ) {
     if (
       user.role === "AGENT" ||
@@ -54,13 +106,18 @@ function ProtectedRoute({
     ) {
       return (
         <Navigate
-          to="/agent/dashboard"
+          to="/agent-dashboard"
           replace
         />
       );
     }
 
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
   }
 
   return children;

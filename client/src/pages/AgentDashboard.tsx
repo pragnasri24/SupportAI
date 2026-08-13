@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import socket from "../socket";
+
 import {
   ResponsiveContainer,
   PieChart,
@@ -16,6 +17,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
+
 import "../styles/agent-dashboard.css";
 
 type TicketStatus = "OPEN" | "PENDING" | "CLOSED";
@@ -76,56 +78,86 @@ type StoredUser = {
   role: string;
 };
 
-type AssignmentFilter = "ALL" | "MY_TICKETS" | "UNASSIGNED";
+type AssignmentFilter =
+  | "ALL"
+  | "MY_TICKETS"
+  | "UNASSIGNED";
+
 type StatusFilter = "ALL" | TicketStatus;
 type PriorityFilter = "ALL" | TicketPriority;
-type SortOrder = "NEWEST" | "OLDEST" | "PRIORITY";
 
-const API_URL = "https://supportai-3v3x.onrender.com/api";
+type SortOrder =
+  | "NEWEST"
+  | "OLDEST"
+  | "PRIORITY";
+
+/*
+  LOCAL BACKEND
+*/
+const API_URL = "http://localhost:5000/api";
 
 function AgentDashboard() {
   const navigate = useNavigate();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
+
+  const [currentUser, setCurrentUser] =
+    useState<StoredUser | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const [assigningTicketId, setAssigningTicketId] = useState<string | null>(
-    null
-  );
+  const [assigningTicketId, setAssigningTicketId] =
+    useState<string | null>(null);
 
   const [searchText, setSearchText] = useState("");
+
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("ALL");
+
   const [priorityFilter, setPriorityFilter] =
     useState<PriorityFilter>("ALL");
+
   const [assignmentFilter, setAssignmentFilter] =
     useState<AssignmentFilter>("ALL");
+
   const [sortOrder, setSortOrder] =
     useState<SortOrder>("NEWEST");
 
+  /*
+    FETCH ALL TICKETS
+  */
   const fetchTickets = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const token = localStorage.getItem("supportai_token");
+      const token =
+        localStorage.getItem("supportai_token");
 
-      const response = await fetch(`${API_URL}/tickets`, {
-        headers: token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : undefined,
-      });
+      const response = await fetch(
+        `${API_URL}/tickets`,
+        {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : undefined,
+        }
+      );
 
-      const data = (await response.json()) as TicketsResponse;
+      const data =
+        (await response.json()) as TicketsResponse;
 
-      if (!response.ok || !data.success || !data.tickets) {
-        throw new Error(data.message || "Unable to load tickets.");
+      if (
+        !response.ok ||
+        !data.success ||
+        !data.tickets
+      ) {
+        throw new Error(
+          data.message || "Unable to load tickets."
+        );
       }
 
       setTickets(data.tickets);
@@ -140,78 +172,96 @@ function AgentDashboard() {
     }
   };
 
-useEffect(() => {
-  const storedUser = localStorage.getItem("supportai_user");
-  const token = localStorage.getItem("supportai_token");
+  /*
+    LOAD LOGGED-IN AGENT
+  */
+  useEffect(() => {
+    const storedUser =
+      localStorage.getItem("supportai_user");
 
-  if (!storedUser || !token) {
-    navigate("/login", {
-      replace: true,
-    });
+    const token =
+      localStorage.getItem("supportai_token");
 
-    return;
-  }
-
-  try {
-    const parsedUser = JSON.parse(storedUser) as StoredUser;
-
-    if (parsedUser.role !== "AGENT") {
-      navigate("/dashboard", {
+    if (!storedUser || !token) {
+      navigate("/login", {
         replace: true,
       });
 
       return;
     }
 
-    setCurrentUser(parsedUser);
-  } catch {
-    localStorage.removeItem("supportai_user");
-    localStorage.removeItem("supportai_token");
+    try {
+      const parsedUser =
+        JSON.parse(storedUser) as StoredUser;
 
-    navigate("/login", {
-      replace: true,
+      if (
+        parsedUser.role !== "AGENT" &&
+        parsedUser.role !== "ADMIN"
+      ) {
+        navigate("/dashboard", {
+          replace: true,
+        });
+
+        return;
+      }
+
+      setCurrentUser(parsedUser);
+    } catch {
+      localStorage.removeItem("supportai_user");
+      localStorage.removeItem("supportai_token");
+
+      navigate("/login", {
+        replace: true,
+      });
+
+      return;
+    }
+
+    void fetchTickets();
+
+    /*
+      SOCKET.IO EVENTS
+    */
+
+    socket.on("ticketCreated", () => {
+      console.log("📩 New ticket received");
+      void fetchTickets();
     });
 
-    return;
-  }
+    socket.on("ticketUpdated", () => {
+      console.log("🔄 Ticket updated");
+      void fetchTickets();
+    });
 
-  void fetchTickets();
+    socket.on("ticketAssigned", () => {
+      console.log("👨‍💻 Ticket assigned");
+      void fetchTickets();
+    });
 
-  // Socket.IO listener
-  socket.on("ticketCreated", () => {
-    console.log("📩 New ticket received");
-    void fetchTickets();
-  });
+    socket.on("ticketClosed", () => {
+      console.log("✅ Ticket closed");
+      void fetchTickets();
+    });
 
-  socket.on("ticketUpdated", () => {
-    console.log("🔄 Ticket updated");
-    void fetchTickets();
-  });
+    return () => {
+      socket.off("ticketCreated");
+      socket.off("ticketUpdated");
+      socket.off("ticketAssigned");
+      socket.off("ticketClosed");
+    };
+  }, [navigate]);
 
-  socket.on("ticketAssigned", () => {
-    console.log("👨‍💻 Ticket assigned");
-    void fetchTickets();
-  });
-
-  socket.on("ticketClosed", () => {
-    console.log("✅ Ticket closed");
-    void fetchTickets();
-  });
-
-  return () => {
-    socket.off("ticketCreated");
-    socket.off("ticketUpdated");
-    socket.off("ticketAssigned");
-    socket.off("ticketClosed");
-  };
-}, [navigate]);
-
-    
- 
-
-  const assignTicket = async (ticketId: string) => {
+  /*
+    ASSIGN TICKET TO CURRENT AGENT
+  */
+  const assignTicket = async (
+    ticketId: string
+  ) => {
     if (!currentUser) {
-      setError("Agent information is unavailable.");
+      setError(
+        "Agent information is unavailable."
+      );
+
       return;
     }
 
@@ -220,35 +270,43 @@ useEffect(() => {
       setError("");
       setSuccessMessage("");
 
-      const token = localStorage.getItem("supportai_token");
+      const token =
+        localStorage.getItem("supportai_token");
 
       const response = await fetch(
         `${API_URL}/tickets/${ticketId}/assign`,
         {
           method: "PATCH",
+
           headers: {
             "Content-Type": "application/json",
+
             ...(token
               ? {
                   Authorization: `Bearer ${token}`,
                 }
               : {}),
           },
+
           body: JSON.stringify({
             agentId: currentUser.id,
           }),
         }
       );
 
-      const data = (await response.json()) as AssignmentResponse;
+      const data =
+        (await response.json()) as AssignmentResponse;
 
       if (!response.ok || !data.success) {
         throw new Error(
-          data.message || "Unable to assign the ticket."
+          data.message ||
+            "Unable to assign the ticket."
         );
       }
 
-      setSuccessMessage("Ticket assigned successfully.");
+      setSuccessMessage(
+        "Ticket assigned successfully."
+      );
 
       await fetchTickets();
     } catch (err) {
@@ -262,20 +320,28 @@ useEffect(() => {
     }
   };
 
-  const unassignTicket = async (ticketId: string) => {
+  /*
+    UNASSIGN TICKET
+  */
+  const unassignTicket = async (
+    ticketId: string
+  ) => {
     try {
       setAssigningTicketId(ticketId);
       setError("");
       setSuccessMessage("");
 
-      const token = localStorage.getItem("supportai_token");
+      const token =
+        localStorage.getItem("supportai_token");
 
       const response = await fetch(
         `${API_URL}/tickets/${ticketId}/unassign`,
         {
           method: "PATCH",
+
           headers: {
             "Content-Type": "application/json",
+
             ...(token
               ? {
                   Authorization: `Bearer ${token}`,
@@ -285,15 +351,19 @@ useEffect(() => {
         }
       );
 
-      const data = (await response.json()) as AssignmentResponse;
+      const data =
+        (await response.json()) as AssignmentResponse;
 
       if (!response.ok || !data.success) {
         throw new Error(
-          data.message || "Unable to unassign the ticket."
+          data.message ||
+            "Unable to unassign the ticket."
         );
       }
 
-      setSuccessMessage("Ticket unassigned successfully.");
+      setSuccessMessage(
+        "Ticket unassigned successfully."
+      );
 
       await fetchTickets();
     } catch (err) {
@@ -307,22 +377,36 @@ useEffect(() => {
     }
   };
 
+  /*
+    SEARCH / FILTER / SORT
+  */
   const filteredTickets = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLowerCase();
+    const normalizedSearch =
+      searchText.trim().toLowerCase();
 
     const result = tickets.filter((ticket) => {
       const assignedAgentName =
-        ticket.assignedAgent?.name?.toLowerCase() || "";
+        ticket.assignedAgent?.name
+          ?.toLowerCase() || "";
 
       const assignedAgentEmail =
-        ticket.assignedAgent?.email?.toLowerCase() || "";
+        ticket.assignedAgent?.email
+          ?.toLowerCase() || "";
 
       const matchesSearch =
         !normalizedSearch ||
-        ticket.title.toLowerCase().includes(normalizedSearch) ||
-        ticket.description.toLowerCase().includes(normalizedSearch) ||
-        ticket.user.name.toLowerCase().includes(normalizedSearch) ||
-        ticket.user.email.toLowerCase().includes(normalizedSearch) ||
+        ticket.title
+          .toLowerCase()
+          .includes(normalizedSearch) ||
+        ticket.description
+          .toLowerCase()
+          .includes(normalizedSearch) ||
+        ticket.user.name
+          .toLowerCase()
+          .includes(normalizedSearch) ||
+        ticket.user.email
+          .toLowerCase()
+          .includes(normalizedSearch) ||
         assignedAgentName.includes(normalizedSearch) ||
         assignedAgentEmail.includes(normalizedSearch);
 
@@ -337,7 +421,8 @@ useEffect(() => {
       const matchesAssignment =
         assignmentFilter === "ALL" ||
         (assignmentFilter === "MY_TICKETS" &&
-          ticket.assignedAgentId === currentUser?.id) ||
+          ticket.assignedAgentId ===
+            currentUser?.id) ||
         (assignmentFilter === "UNASSIGNED" &&
           !ticket.assignedAgentId);
 
@@ -349,32 +434,45 @@ useEffect(() => {
       );
     });
 
-    return [...result].sort((firstTicket, secondTicket) => {
-      if (sortOrder === "OLDEST") {
+    return [...result].sort(
+      (firstTicket, secondTicket) => {
+        if (sortOrder === "OLDEST") {
+          return (
+            new Date(
+              firstTicket.createdAt
+            ).getTime() -
+            new Date(
+              secondTicket.createdAt
+            ).getTime()
+          );
+        }
+
+        if (sortOrder === "PRIORITY") {
+          const priorityOrder: Record<
+            TicketPriority,
+            number
+          > = {
+            HIGH: 3,
+            MEDIUM: 2,
+            LOW: 1,
+          };
+
+          return (
+            priorityOrder[secondTicket.priority] -
+            priorityOrder[firstTicket.priority]
+          );
+        }
+
         return (
-          new Date(firstTicket.createdAt).getTime() -
-          new Date(secondTicket.createdAt).getTime()
+          new Date(
+            secondTicket.createdAt
+          ).getTime() -
+          new Date(
+            firstTicket.createdAt
+          ).getTime()
         );
       }
-
-      if (sortOrder === "PRIORITY") {
-        const priorityOrder: Record<TicketPriority, number> = {
-          HIGH: 3,
-          MEDIUM: 2,
-          LOW: 1,
-        };
-
-        return (
-          priorityOrder[secondTicket.priority] -
-          priorityOrder[firstTicket.priority]
-        );
-      }
-
-      return (
-        new Date(secondTicket.createdAt).getTime() -
-        new Date(firstTicket.createdAt).getTime()
-      );
-    });
+    );
   }, [
     tickets,
     searchText,
@@ -385,6 +483,9 @@ useEffect(() => {
     currentUser,
   ]);
 
+  /*
+    DASHBOARD STATISTICS
+  */
   const totalTickets = tickets.length;
 
   const openTickets = tickets.filter(
@@ -400,43 +501,78 @@ useEffect(() => {
   ).length;
 
   const myTickets = tickets.filter(
-    (ticket) => ticket.assignedAgentId === currentUser?.id
+    (ticket) =>
+      ticket.assignedAgentId === currentUser?.id
   ).length;
-const statusChartData = [
-  { name: "Open", value: openTickets },
-  { name: "Pending", value: pendingTickets },
-  { name: "Closed", value: closedTickets },
-];
 
-const priorityChartData = [
-  {
-    name: "High",
-    value: tickets.filter((t) => t.priority === "HIGH").length,
-  },
-  {
-    name: "Medium",
-    value: tickets.filter((t) => t.priority === "MEDIUM").length,
-  },
-  {
-    name: "Low",
-    value: tickets.filter((t) => t.priority === "LOW").length,
-  },
-];
+  /*
+    STATUS CHART
+  */
+  const statusChartData = [
+    {
+      name: "Open",
+      value: openTickets,
+    },
+    {
+      name: "Pending",
+      value: pendingTickets,
+    },
+    {
+      name: "Closed",
+      value: closedTickets,
+    },
+  ];
 
-const ticketsPerDay = useMemo(() => {
-  const grouped: Record<string, number> = {};
+  /*
+    PRIORITY CHART
+  */
+  const priorityChartData = [
+    {
+      name: "High",
+      value: tickets.filter(
+        (ticket) => ticket.priority === "HIGH"
+      ).length,
+    },
+    {
+      name: "Medium",
+      value: tickets.filter(
+        (ticket) => ticket.priority === "MEDIUM"
+      ).length,
+    },
+    {
+      name: "Low",
+      value: tickets.filter(
+        (ticket) => ticket.priority === "LOW"
+      ).length,
+    },
+  ];
 
-  tickets.forEach((ticket) => {
-    const day = new Date(ticket.createdAt).toLocaleDateString();
+  /*
+    TICKETS PER DAY
+  */
+  const ticketsPerDay = useMemo(() => {
+    const grouped: Record<string, number> = {};
 
-    grouped[day] = (grouped[day] || 0) + 1;
-  });
+    tickets.forEach((ticket) => {
+      const day = new Date(
+        ticket.createdAt
+      ).toLocaleDateString();
 
-  return Object.entries(grouped).map(([date, tickets]) => ({
-    date,
-    tickets,
-  }));
-}, [tickets]);
+      grouped[day] =
+        (grouped[day] || 0) + 1;
+    });
+
+    return Object.entries(grouped).map(
+      ([date, ticketCount]) => ({
+        date,
+        tickets: ticketCount,
+      })
+    );
+  }, [tickets]);
+
+  /*
+    LOGOUT
+  */
   const handleLogout = () => {
     localStorage.removeItem("supportai_token");
     localStorage.removeItem("supportai_user");
@@ -446,6 +582,9 @@ const ticketsPerDay = useMemo(() => {
     });
   };
 
+  /*
+    LOADING SCREEN
+  */
   if (loading) {
     return (
       <main className="agent-dashboard-page">
@@ -461,6 +600,8 @@ const ticketsPerDay = useMemo(() => {
   return (
     <main className="agent-dashboard-page">
       <div className="agent-dashboard-container">
+        {/* HEADER */}
+
         <header className="agent-dashboard-header">
           <div>
             <p className="agent-dashboard-eyebrow">
@@ -471,8 +612,9 @@ const ticketsPerDay = useMemo(() => {
 
             <p>
               Welcome back,{" "}
-              {currentUser?.name || "Support Agent"}. Review and
-              manage all customer support requests.
+              {currentUser?.name || "Support Agent"}.
+              Review and manage all customer support
+              requests.
             </p>
           </div>
 
@@ -485,11 +627,15 @@ const ticketsPerDay = useMemo(() => {
           </button>
         </header>
 
+        {/* ERROR */}
+
         {error && (
           <div className="agent-dashboard-error">
             {error}
           </div>
         )}
+
+        {/* SUCCESS */}
 
         {successMessage && (
           <div
@@ -499,6 +645,8 @@ const ticketsPerDay = useMemo(() => {
             {successMessage}
           </div>
         )}
+
+        {/* SUMMARY */}
 
         <section className="agent-dashboard-summary">
           <article className="agent-summary-card">
@@ -526,144 +674,173 @@ const ticketsPerDay = useMemo(() => {
             <strong>{myTickets}</strong>
           </article>
         </section>
-        {/* ==================== Analytics Section ==================== */}
 
-<section className="agent-dashboard-analytics">
+        {/* ANALYTICS */}
 
-  <div className="agent-chart-card">
-    <h3>Tickets by Status</h3>
+        <section className="agent-dashboard-analytics">
+          {/* STATUS PIE */}
 
-    <div className="agent-chart">
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={statusChartData}
-            dataKey="value"
-            nameKey="name"
-            outerRadius={100}
-            label
-          >
-          {statusChartData.map((_, index) => (
-              <Cell
-                key={index}
-                fill={
-                  [
-                    "#3B82F6",
-                    "#F59E0B",
-                    "#22C55E",
-                  ][index]
-                }
-              />
-            ))}
-          </Pie>
+          <div className="agent-chart-card">
+            <h3>Tickets by Status</h3>
 
-          <Tooltip />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
+            <div className="agent-chart">
+              <ResponsiveContainer
+                width="100%"
+                height={300}
+              >
+                <PieChart>
+                  <Pie
+                    data={statusChartData}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={100}
+                    label
+                  >
+                    {statusChartData.map(
+                      (_, index) => (
+                        <Cell
+                          key={index}
+                          fill={
+                            [
+                              "#3B82F6",
+                              "#F59E0B",
+                              "#22C55E",
+                            ][index]
+                          }
+                        />
+                      )
+                    )}
+                  </Pie>
 
-  <div className="agent-chart-card">
-    <h3>Tickets by Priority</h3>
-
-    <div className="agent-chart">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={priorityChartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-
-          <XAxis dataKey="name" />
-
-          <YAxis />
-
-          <Tooltip />
-
-          <Bar dataKey="value">
-         {priorityChartData.map((_, index) => (
-              <Cell
-                key={index}
-                fill={
-                  [
-                    "#EF4444",
-                    "#F59E0B",
-                    "#22C55E",
-                  ][index]
-                }
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-
-  <div className="agent-chart-card">
-    <h3>Tickets Created</h3>
-
-    <div className="agent-chart">
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={ticketsPerDay}>
-          <CartesianGrid strokeDasharray="3 3" />
-
-          <XAxis dataKey="date" />
-
-          <YAxis />
-
-          <Tooltip />
-
-          <Legend />
-
-          <Line
-            type="monotone"
-            dataKey="tickets"
-            stroke="#3B82F6"
-            strokeWidth={3}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-
-  <div className="agent-chart-card">
-    <h3>Recent Activity</h3>
-
-    <div className="agent-recent-activity">
-      {tickets
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() -
-            new Date(a.createdAt).getTime()
-        )
-        .slice(0, 5)
-        .map((ticket) => (
-          <div
-            key={ticket.id}
-            className="agent-activity-item"
-          >
-            <div>
-              <div className="agent-activity-title">
-                {ticket.title}
-              </div>
-
-              <div className="agent-activity-date">
-                {new Date(
-                  ticket.createdAt
-                ).toLocaleString()}
-              </div>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-
-            <span
-              className={`status-badge status-${ticket.status.toLowerCase()}`}
-            >
-              {ticket.status}
-            </span>
           </div>
-        ))}
-    </div>
-  </div>
 
-</section>
+          {/* PRIORITY BAR */}
+
+          <div className="agent-chart-card">
+            <h3>Tickets by Priority</h3>
+
+            <div className="agent-chart">
+              <ResponsiveContainer
+                width="100%"
+                height={300}
+              >
+                <BarChart
+                  data={priorityChartData}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                  />
+
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+
+                  <Bar dataKey="value">
+                    {priorityChartData.map(
+                      (_, index) => (
+                        <Cell
+                          key={index}
+                          fill={
+                            [
+                              "#EF4444",
+                              "#F59E0B",
+                              "#22C55E",
+                            ][index]
+                          }
+                        />
+                      )
+                    )}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* TICKETS CREATED */}
+
+          <div className="agent-chart-card">
+            <h3>Tickets Created</h3>
+
+            <div className="agent-chart">
+              <ResponsiveContainer
+                width="100%"
+                height={300}
+              >
+                <LineChart
+                  data={ticketsPerDay}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                  />
+
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+
+                  <Line
+                    type="monotone"
+                    dataKey="tickets"
+                    stroke="#3B82F6"
+                    strokeWidth={3}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* RECENT ACTIVITY */}
+
+          <div className="agent-chart-card">
+            <h3>Recent Activity</h3>
+
+            <div className="agent-recent-activity">
+              {tickets
+                .slice()
+                .sort(
+                  (a, b) =>
+                    new Date(
+                      b.createdAt
+                    ).getTime() -
+                    new Date(
+                      a.createdAt
+                    ).getTime()
+                )
+                .slice(0, 5)
+                .map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className="agent-activity-item"
+                  >
+                    <div>
+                      <div className="agent-activity-title">
+                        {ticket.title}
+                      </div>
+
+                      <div className="agent-activity-date">
+                        {new Date(
+                          ticket.createdAt
+                        ).toLocaleString()}
+                      </div>
+                    </div>
+
+                    <span
+                      className={`status-badge status-${ticket.status.toLowerCase()}`}
+                    >
+                      {ticket.status}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </section>
+
+        {/* SUPPORT TICKETS */}
 
         <section className="agent-dashboard-panel">
           <div className="agent-dashboard-panel-header">
@@ -685,6 +862,8 @@ const ticketsPerDay = useMemo(() => {
             </button>
           </div>
 
+          {/* FILTERS */}
+
           <div className="agent-dashboard-filters">
             <input
               type="search"
@@ -703,10 +882,21 @@ const ticketsPerDay = useMemo(() => {
                 )
               }
             >
-              <option value="ALL">All statuses</option>
-              <option value="OPEN">Open</option>
-              <option value="PENDING">Pending</option>
-              <option value="CLOSED">Closed</option>
+              <option value="ALL">
+                All statuses
+              </option>
+
+              <option value="OPEN">
+                Open
+              </option>
+
+              <option value="PENDING">
+                Pending
+              </option>
+
+              <option value="CLOSED">
+                Closed
+              </option>
             </select>
 
             <select
@@ -717,24 +907,40 @@ const ticketsPerDay = useMemo(() => {
                 )
               }
             >
-              <option value="ALL">All priorities</option>
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="LOW">Low</option>
+              <option value="ALL">
+                All priorities
+              </option>
+
+              <option value="HIGH">
+                High
+              </option>
+
+              <option value="MEDIUM">
+                Medium
+              </option>
+
+              <option value="LOW">
+                Low
+              </option>
             </select>
 
             <select
               value={assignmentFilter}
               onChange={(event) =>
                 setAssignmentFilter(
-                  event.target.value as AssignmentFilter
+                  event.target
+                    .value as AssignmentFilter
                 )
               }
             >
-              <option value="ALL">All assignments</option>
+              <option value="ALL">
+                All assignments
+              </option>
+
               <option value="MY_TICKETS">
                 My tickets
               </option>
+
               <option value="UNASSIGNED">
                 Unassigned tickets
               </option>
@@ -751,27 +957,34 @@ const ticketsPerDay = useMemo(() => {
               <option value="NEWEST">
                 Newest first
               </option>
+
               <option value="OLDEST">
                 Oldest first
               </option>
+
               <option value="PRIORITY">
                 Highest priority
               </option>
             </select>
           </div>
 
+          {/* EMPTY STATE */}
+
           {filteredTickets.length === 0 ? (
             <div className="agent-dashboard-empty">
               <h3>No tickets found</h3>
+
               <p>
-                Try changing your filters or search text.
+                Try changing your filters or search
+                text.
               </p>
             </div>
           ) : (
             <div className="agent-ticket-list">
               {filteredTickets.map((ticket) => {
                 const isAssignedToCurrentAgent =
-                  ticket.assignedAgentId === currentUser?.id;
+                  ticket.assignedAgentId ===
+                  currentUser?.id;
 
                 const isAssignedToAnotherAgent =
                   Boolean(ticket.assignedAgentId) &&
@@ -793,7 +1006,9 @@ const ticketsPerDay = useMemo(() => {
                             {ticket.user.email}
                           </p>
 
-                          <h3>{ticket.title}</h3>
+                          <h3>
+                            {ticket.title}
+                          </h3>
                         </div>
 
                         <div className="agent-ticket-badges">
@@ -836,18 +1051,21 @@ const ticketsPerDay = useMemo(() => {
                         </span>
 
                         <span>
-                          {ticket._count?.comments || 0}{" "}
+                          {ticket._count?.comments ||
+                            0}{" "}
                           replies
                         </span>
 
                         <span>
-                          Customer role: {ticket.user.role}
+                          Customer role:{" "}
+                          {ticket.user.role}
                         </span>
 
                         <span>
                           Assigned to:{" "}
                           {ticket.assignedAgent
-                            ? ticket.assignedAgent.name
+                            ? ticket.assignedAgent
+                                .name
                             : "Unassigned"}
                         </span>
                       </div>
@@ -867,7 +1085,9 @@ const ticketsPerDay = useMemo(() => {
                           type="button"
                           disabled={isUpdating}
                           onClick={() =>
-                            void assignTicket(ticket.id)
+                            void assignTicket(
+                              ticket.id
+                            )
                           }
                         >
                           {isUpdating
@@ -882,7 +1102,9 @@ const ticketsPerDay = useMemo(() => {
                           type="button"
                           disabled={isUpdating}
                           onClick={() =>
-                            void unassignTicket(ticket.id)
+                            void unassignTicket(
+                              ticket.id
+                            )
                           }
                         >
                           {isUpdating
@@ -898,7 +1120,8 @@ const ticketsPerDay = useMemo(() => {
                           disabled
                         >
                           Assigned to{" "}
-                          {ticket.assignedAgent?.name ||
+                          {ticket.assignedAgent
+                            ?.name ||
                             "Another Agent"}
                         </button>
                       )}

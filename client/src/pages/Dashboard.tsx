@@ -39,9 +39,14 @@ type CreateTicketResponse = {
 
 type StatusFilter = "ALL" | TicketStatus;
 type PriorityFilter = "ALL" | TicketPriority;
-type SortOption = "NEWEST" | "OLDEST" | "PRIORITY_HIGH" | "PRIORITY_LOW";
 
-const API_URL = "https://supportai-3v3x.onrender.com/api";
+type SortOption =
+  | "NEWEST"
+  | "OLDEST"
+  | "PRIORITY_HIGH"
+  | "PRIORITY_LOW";
+
+const API_URL = "http://localhost:5000/api";
 
 const priorityRank: Record<TicketPriority, number> = {
   LOW: 1,
@@ -112,7 +117,9 @@ function Dashboard() {
       const data = (await response.json()) as TicketsResponse;
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || "Unable to load tickets.");
+        throw new Error(
+          data.message || "Unable to load tickets."
+        );
       }
 
       setTickets(data.tickets ?? []);
@@ -130,11 +137,15 @@ function Dashboard() {
   const statistics = useMemo(() => {
     return {
       total: tickets.length,
-      open: tickets.filter((ticket) => ticket.status === "OPEN")
-        .length,
+
+      open: tickets.filter(
+        (ticket) => ticket.status === "OPEN"
+      ).length,
+
       pending: tickets.filter(
         (ticket) => ticket.status === "PENDING"
       ).length,
+
       closed: tickets.filter(
         (ticket) => ticket.status === "CLOSED"
       ).length,
@@ -142,12 +153,15 @@ function Dashboard() {
   }, [tickets]);
 
   const filteredTickets = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const normalizedSearch =
+      searchQuery.trim().toLowerCase();
 
     const result = tickets.filter((ticket) => {
       const matchesSearch =
         !normalizedSearch ||
-        ticket.title.toLowerCase().includes(normalizedSearch) ||
+        ticket.title
+          .toLowerCase()
+          .includes(normalizedSearch) ||
         ticket.description
           .toLowerCase()
           .includes(normalizedSearch);
@@ -167,34 +181,44 @@ function Dashboard() {
       );
     });
 
-    return [...result].sort((firstTicket, secondTicket) => {
-      switch (sortOption) {
-        case "OLDEST":
-          return (
-            new Date(firstTicket.createdAt).getTime() -
-            new Date(secondTicket.createdAt).getTime()
-          );
+    return [...result].sort(
+      (firstTicket, secondTicket) => {
+        switch (sortOption) {
+          case "OLDEST":
+            return (
+              new Date(
+                firstTicket.createdAt
+              ).getTime() -
+              new Date(
+                secondTicket.createdAt
+              ).getTime()
+            );
 
-        case "PRIORITY_HIGH":
-          return (
-            priorityRank[secondTicket.priority] -
-            priorityRank[firstTicket.priority]
-          );
+          case "PRIORITY_HIGH":
+            return (
+              priorityRank[secondTicket.priority] -
+              priorityRank[firstTicket.priority]
+            );
 
-        case "PRIORITY_LOW":
-          return (
-            priorityRank[firstTicket.priority] -
-            priorityRank[secondTicket.priority]
-          );
+          case "PRIORITY_LOW":
+            return (
+              priorityRank[firstTicket.priority] -
+              priorityRank[secondTicket.priority]
+            );
 
-        case "NEWEST":
-        default:
-          return (
-            new Date(secondTicket.createdAt).getTime() -
-            new Date(firstTicket.createdAt).getTime()
-          );
+          case "NEWEST":
+          default:
+            return (
+              new Date(
+                secondTicket.createdAt
+              ).getTime() -
+              new Date(
+                firstTicket.createdAt
+              ).getTime()
+            );
+        }
       }
-    });
+    );
   }, [
     tickets,
     searchQuery,
@@ -224,25 +248,33 @@ function Dashboard() {
       setError("");
       setSuccessMessage("");
 
-      const response = await fetch(`${API_URL}/tickets`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          priority,
-          userId: user.id,
-        }),
-      });
+      const response = await fetch(
+        `${API_URL}/tickets`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: title.trim(),
+            description: description.trim(),
+            priority,
+            userId: user.id,
+          }),
+        }
+      );
 
       const data =
         (await response.json()) as CreateTicketResponse;
 
-      if (!response.ok || !data.success || !data.ticket) {
+      if (
+        !response.ok ||
+        !data.success ||
+        !data.ticket
+      ) {
         throw new Error(
-          data.message || "Unable to create the ticket."
+          data.message ||
+            "Unable to create the ticket."
         );
       }
 
@@ -253,7 +285,9 @@ function Dashboard() {
 
       resetTicketForm();
       setShowCreateForm(false);
-      setSuccessMessage("Ticket created successfully.");
+      setSuccessMessage(
+        "Ticket created successfully."
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -268,7 +302,11 @@ function Dashboard() {
   const handleLogout = () => {
     localStorage.removeItem("supportai_token");
     localStorage.removeItem("supportai_user");
-    navigate("/login", { replace: true });
+
+    navigate("/login", {
+      replace: true,
+    });
+
     window.location.reload();
   };
 
@@ -295,8 +333,11 @@ function Dashboard() {
 
             <p className="dashboard-subtitle">
               Welcome back
-              {user?.name ? `, ${user.name}` : ""}. Manage and
-              track your support requests.
+              {user?.name
+                ? `, ${user.name}`
+                : ""}
+              . Manage and track your support
+              requests.
             </p>
           </div>
 
@@ -322,11 +363,13 @@ function Dashboard() {
         {user && (
           <section className="dashboard-user-card">
             <p>
-              <strong>Email:</strong> {user.email}
+              <strong>Email:</strong>{" "}
+              {user.email}
             </p>
 
             <p>
-              <strong>Role:</strong> {user.role}
+              <strong>Role:</strong>{" "}
+              {user.role}
             </p>
           </section>
         )}
@@ -400,7 +443,9 @@ function Dashboard() {
                 placeholder="Search by title or description..."
                 value={searchQuery}
                 onChange={(event) =>
-                  setSearchQuery(event.target.value)
+                  setSearchQuery(
+                    event.target.value
+                  )
                 }
               />
             </div>
@@ -411,14 +456,26 @@ function Dashboard() {
               value={statusFilter}
               onChange={(event) =>
                 setStatusFilter(
-                  event.target.value as StatusFilter
+                  event.target
+                    .value as StatusFilter
                 )
               }
             >
-              <option value="ALL">All statuses</option>
-              <option value="OPEN">Open</option>
-              <option value="PENDING">Pending</option>
-              <option value="CLOSED">Closed</option>
+              <option value="ALL">
+                All statuses
+              </option>
+
+              <option value="OPEN">
+                Open
+              </option>
+
+              <option value="PENDING">
+                Pending
+              </option>
+
+              <option value="CLOSED">
+                Closed
+              </option>
             </select>
 
             <select
@@ -427,16 +484,26 @@ function Dashboard() {
               value={priorityFilter}
               onChange={(event) =>
                 setPriorityFilter(
-                  event.target.value as PriorityFilter
+                  event.target
+                    .value as PriorityFilter
                 )
               }
             >
-              <option value="ALL">All priorities</option>
-              <option value="LOW">Low priority</option>
+              <option value="ALL">
+                All priorities
+              </option>
+
+              <option value="LOW">
+                Low priority
+              </option>
+
               <option value="MEDIUM">
                 Medium priority
               </option>
-              <option value="HIGH">High priority</option>
+
+              <option value="HIGH">
+                High priority
+              </option>
             </select>
 
             <select
@@ -445,15 +512,23 @@ function Dashboard() {
               value={sortOption}
               onChange={(event) =>
                 setSortOption(
-                  event.target.value as SortOption
+                  event.target
+                    .value as SortOption
                 )
               }
             >
-              <option value="NEWEST">Newest first</option>
-              <option value="OLDEST">Oldest first</option>
+              <option value="NEWEST">
+                Newest first
+              </option>
+
+              <option value="OLDEST">
+                Oldest first
+              </option>
+
               <option value="PRIORITY_HIGH">
                 Priority: high to low
               </option>
+
               <option value="PRIORITY_LOW">
                 Priority: low to high
               </option>
@@ -494,7 +569,9 @@ function Dashboard() {
                   placeholder="Describe the problem in detail..."
                   value={description}
                   onChange={(event) =>
-                    setDescription(event.target.value)
+                    setDescription(
+                      event.target.value
+                    )
                   }
                   required
                 />
@@ -515,9 +592,17 @@ function Dashboard() {
                     )
                   }
                 >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
+                  <option value="LOW">
+                    Low
+                  </option>
+
+                  <option value="MEDIUM">
+                    Medium
+                  </option>
+
+                  <option value="HIGH">
+                    High
+                  </option>
                 </select>
               </div>
 
@@ -554,7 +639,9 @@ function Dashboard() {
           )}
 
           {error && (
-            <p className="dashboard-error">{error}</p>
+            <p className="dashboard-error">
+              {error}
+            </p>
           )}
 
           {loading && (
@@ -581,60 +668,66 @@ function Dashboard() {
               </div>
             )}
 
-          {!loading && filteredTickets.length > 0 && (
-            <div className="dashboard-ticket-list">
-              {filteredTickets.map((ticket) => (
-                <Link
-                  className="dashboard-ticket-link"
-                  key={ticket.id}
-                  to={`/tickets/${ticket.id}`}
-                >
-                  <article className="dashboard-ticket-card">
-                    <div className="dashboard-ticket-top">
-                      <h3 className="dashboard-ticket-title">
-                        {ticket.title}
-                      </h3>
+          {!loading &&
+            filteredTickets.length > 0 && (
+              <div className="dashboard-ticket-list">
+                {filteredTickets.map(
+                  (ticket) => (
+                    <Link
+                      className="dashboard-ticket-link"
+                      key={ticket.id}
+                      to={`/tickets/${ticket.id}`}
+                    >
+                      <article className="dashboard-ticket-card">
+                        <div className="dashboard-ticket-top">
+                          <h3 className="dashboard-ticket-title">
+                            {ticket.title}
+                          </h3>
 
-                      <div className="dashboard-ticket-badges">
-                        <span
-                          className={`dashboard-status-badge dashboard-status-${ticket.status.toLowerCase()}`}
-                        >
-                          {ticket.status}
-                        </span>
+                          <div className="dashboard-ticket-badges">
+                            <span
+                              className={`dashboard-status-badge dashboard-status-${ticket.status.toLowerCase()}`}
+                            >
+                              {ticket.status}
+                            </span>
 
-                        <span
-                          className={`dashboard-priority-badge dashboard-priority-${ticket.priority.toLowerCase()}`}
-                        >
-                          {ticket.priority}
-                        </span>
-                      </div>
-                    </div>
+                            <span
+                              className={`dashboard-priority-badge dashboard-priority-${ticket.priority.toLowerCase()}`}
+                            >
+                              {ticket.priority}
+                            </span>
+                          </div>
+                        </div>
 
-                    <p className="dashboard-ticket-description">
-                      {ticket.description}
-                    </p>
+                        <p className="dashboard-ticket-description">
+                          {ticket.description}
+                        </p>
 
-                    <div className="dashboard-ticket-footer">
-                      <span>
-                        Created{" "}
-                        {new Date(
-                          ticket.createdAt
-                        ).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
+                        <div className="dashboard-ticket-footer">
+                          <span>
+                            Created{" "}
+                            {new Date(
+                              ticket.createdAt
+                            ).toLocaleDateString(
+                              undefined,
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
+                          </span>
 
-                      <span className="dashboard-view-link">
-                        View details →
-                      </span>
-                    </div>
-                  </article>
-                </Link>
-              ))}
-            </div>
-          )}
+                          <span className="dashboard-view-link">
+                            View details →
+                          </span>
+                        </div>
+                      </article>
+                    </Link>
+                  )
+                )}
+              </div>
+            )}
         </section>
       </div>
     </main>

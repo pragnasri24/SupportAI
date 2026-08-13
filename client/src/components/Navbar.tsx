@@ -1,5 +1,13 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import "../styles/navbar.css";
 
@@ -14,71 +22,131 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
+  const [
+    isLoggedIn,
+    setIsLoggedIn,
+  ] = useState(false);
+
+  const [
+    currentUser,
+    setCurrentUser,
+  ] =
+    useState<StoredUser | null>(
+      null
+    );
 
   useEffect(() => {
-    const token = localStorage.getItem("supportai_token");
-    const storedUser = localStorage.getItem("supportai_user");
+    const token =
+      localStorage.getItem(
+        "supportai_token"
+      );
 
-    setIsLoggedIn(Boolean(token));
+    const storedUser =
+      localStorage.getItem(
+        "supportai_user"
+      );
 
-    if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser) as StoredUser);
-      } catch {
-        setCurrentUser(null);
-      }
-    } else {
+    setIsLoggedIn(
+      Boolean(token && storedUser)
+    );
+
+    if (!storedUser) {
+      setCurrentUser(null);
+      return;
+    }
+
+    try {
+      const parsedUser =
+        JSON.parse(
+          storedUser
+        ) as StoredUser;
+
+      setCurrentUser(
+        parsedUser
+      );
+    } catch {
+      localStorage.removeItem(
+        "supportai_token"
+      );
+
+      localStorage.removeItem(
+        "supportai_user"
+      );
+
+      setIsLoggedIn(false);
       setCurrentUser(null);
     }
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("supportai_token");
-    localStorage.removeItem("supportai_user");
+    localStorage.removeItem(
+      "supportai_token"
+    );
+
+    localStorage.removeItem(
+      "supportai_user"
+    );
 
     setIsLoggedIn(false);
     setCurrentUser(null);
 
-    navigate("/login", {
-      replace: true,
-    });
+    navigate(
+      "/login",
+      {
+        replace: true,
+      }
+    );
   };
 
   const isAgent =
-    currentUser?.role === "AGENT" || currentUser?.role === "ADMIN";
+    currentUser?.role === "AGENT" ||
+    currentUser?.role === "ADMIN";
 
   return (
     <nav className="navbar">
       <div className="logo">
-        <Link to="/">SupportAI</Link>
+        <Link to="/">
+          SupportAI
+        </Link>
       </div>
 
       <div className="links">
-        <Link to="/">Home</Link>
+        <Link to="/">
+          Home
+        </Link>
 
         {isLoggedIn ? (
           <>
             {isAgent ? (
-              <Link to="/agent/dashboard">Agent Dashboard</Link>
+              <Link to="/agent-dashboard">
+                Agent Dashboard
+              </Link>
             ) : (
-              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/dashboard">
+                Dashboard
+              </Link>
             )}
 
             <button
               className="btn logout-btn"
               type="button"
-              onClick={handleLogout}
+              onClick={
+                handleLogout
+              }
             >
               Logout
             </button>
           </>
         ) : (
           <>
-            <Link to="/login">Login</Link>
+            <Link to="/login">
+              Login
+            </Link>
 
-            <Link className="btn" to="/register">
+            <Link
+              className="btn"
+              to="/register"
+            >
               Get Started
             </Link>
           </>

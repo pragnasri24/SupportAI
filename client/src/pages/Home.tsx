@@ -1,63 +1,179 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
+const API_URL =
+  "http://localhost:5000/api";
+
+type StoredUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
 
 function Home() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [message, setMessage] = useState("Checking backend connection...");
-  const [connected, setConnected] = useState(false);
+  const [
+    message,
+    setMessage,
+  ] = useState(
+    "Checking backend connection..."
+  );
+
+  const [
+    connected,
+    setConnected,
+  ] = useState(false);
 
   useEffect(() => {
-    const checkBackend = async () => {
-      try {
-        const response = await fetch("https://supportai-3v3x.onrender.com/api/health");
-        const data = await response.json();
+    const checkBackend =
+      async () => {
+        try {
+          const response =
+            await fetch(
+              `${API_URL}/health`
+            );
 
-        if (!response.ok) {
-          throw new Error("Backend connection failed");
+          const data =
+            await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              "Backend connection failed"
+            );
+          }
+
+          setMessage(
+            data.message ||
+              "Backend is connected"
+          );
+
+          setConnected(true);
+        } catch (error) {
+          console.error(
+            "Backend health check failed:",
+            error
+          );
+
+          setMessage(
+            "Backend is not connected"
+          );
+
+          setConnected(false);
         }
-
-        setMessage(data.message || "Backend is connected");
-        setConnected(true);
-      } catch (error) {
-        console.error("Backend health check failed:", error);
-        setMessage("Backend is not connected");
-        setConnected(false);
-      }
-    };
+      };
 
     void checkBackend();
   }, []);
 
-  const handleGetStarted = () => {
-    const token = localStorage.getItem("supportai_token");
+  const handleGetStarted =
+    () => {
+      const token =
+        localStorage.getItem(
+          "supportai_token"
+        );
 
-    if (token) {
-      navigate("/dashboard");
-    } else {
-      navigate("/register");
-    }
-  };
+      const storedUser =
+        localStorage.getItem(
+          "supportai_user"
+        );
+
+      if (
+        !token ||
+        !storedUser
+      ) {
+        navigate(
+          "/register"
+        );
+
+        return;
+      }
+
+      try {
+        const user =
+          JSON.parse(
+            storedUser
+          ) as StoredUser;
+
+        if (
+          user.role ===
+            "AGENT" ||
+          user.role ===
+            "ADMIN"
+        ) {
+          navigate(
+            "/agent-dashboard"
+          );
+        } else {
+          navigate(
+            "/dashboard"
+          );
+        }
+      } catch {
+        localStorage.removeItem(
+          "supportai_token"
+        );
+
+        localStorage.removeItem(
+          "supportai_user"
+        );
+
+        navigate(
+          "/register"
+        );
+      }
+    };
 
   return (
     <div className="home">
       <div className="hero">
-        <h1>AI Customer Support Platform</h1>
+        <h1>
+          AI Customer Support
+          Platform
+        </h1>
 
         <p>
-          Automate customer support using AI, ticket management, analytics,
-          and intelligent knowledge search.
+          Manage customer
+          support tickets,
+          conversations,
+          assignments,
+          analytics, and
+          support workflows
+          from one platform.
         </p>
 
-        <button type="button" onClick={handleGetStarted}>
+        <button
+          type="button"
+          onClick={
+            handleGetStarted
+          }
+        >
           Get Started
         </button>
       </div>
 
       <div className="statusCard">
-        <h2>Backend Status</h2>
+        <h2>
+          Backend Status
+        </h2>
 
-        <p className={connected ? "green" : "red"}>{message}</p>
+        <p
+          className={
+            connected
+              ? "green"
+              : "red"
+          }
+        >
+          {message}
+        </p>
       </div>
     </div>
   );
